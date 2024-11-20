@@ -9,11 +9,7 @@ import 'package:intl_phone_field/helpers.dart';
 
 import './countries.dart';
 import './phone_number.dart';
-
 class IntlPhoneField extends StatefulWidget {
-  /// The TextFormField key.
-  final GlobalKey<FormFieldState>? formFieldKey;
-
   /// Whether to hide the text being edited (e.g., for passwords).
   final bool obscureText;
 
@@ -243,15 +239,25 @@ class IntlPhoneField extends StatefulWidget {
   /// If unset, defaults to [EdgeInsets.zero].
   final EdgeInsets flagsButtonMargin;
 
-  /// Enable the autofill hint for phone number.
+  //enable the autofill hint for phone number
   final bool disableAutoFillHints;
 
-  /// If null, default magnification configuration will be used.
-  final TextMagnifierConfiguration? magnifierConfiguration;
+// The width of country selection popup Screen
+  final double? popupWidth;
 
+  // Show Popup in the position of click
+  final bool positionedPopup;
+
+  final EdgeInsets? textFieldPadding;
+  final bool? textFieldIsDense;
+  final double flagWidth;
   const IntlPhoneField({
     Key? key,
-    this.formFieldKey,
+    this.popupWidth,
+    this.flagWidth = 32,
+    this.textFieldPadding,
+    this.textFieldIsDense,
+    this.positionedPopup = false,
     this.initialCountryCode,
     this.languageCode = 'en',
     this.disableAutoFillHints = false,
@@ -295,14 +301,13 @@ class IntlPhoneField extends StatefulWidget {
     this.showCursor = true,
     this.pickerDialogStyle,
     this.flagsButtonMargin = EdgeInsets.zero,
-    this.magnifierConfiguration,
   }) : super(key: key);
 
   @override
-  State<IntlPhoneField> createState() => _IntlPhoneFieldState();
+  IntlPhoneFieldState createState() => IntlPhoneFieldState();
 }
 
-class _IntlPhoneFieldState extends State<IntlPhoneField> {
+class IntlPhoneFieldState extends State<IntlPhoneField> {
   late List<Country> _countryList;
   late Country _selectedCountry;
   late List<Country> filteredCountries;
@@ -355,24 +360,32 @@ class _IntlPhoneFieldState extends State<IntlPhoneField> {
     }
   }
 
-  Future<void> _changeCountry() async {
+  Future<void> _changeCountry(TapUpDetails tapDetails) async {
     filteredCountries = _countryList;
+
     await showDialog(
+      barrierColor: widget.positionedPopup ? Colors.transparent : Colors.black45,
       context: context,
       useRootNavigator: false,
-      builder: (context) => StatefulBuilder(
-        builder: (ctx, setState) => CountryPickerDialog(
-          languageCode: widget.languageCode.toLowerCase(),
-          style: widget.pickerDialogStyle,
-          filteredCountries: filteredCountries,
-          searchText: widget.searchText,
-          countryList: _countryList,
-          selectedCountry: _selectedCountry,
-          onCountryChanged: (Country country) {
-            _selectedCountry = country;
-            widget.onCountryChanged?.call(country);
-            setState(() {});
-          },
+      builder: (context) => SizedBox(
+        // width: widget.popupWidth,
+        child: StatefulBuilder(
+          builder: (ctx, setState) => CountryPickerDialog(
+            popupWidth: widget.popupWidth,
+            offset: widget.positionedPopup ? tapDetails.globalPosition : const Offset(0, 0),
+            alignment: widget.positionedPopup ? Alignment.topLeft : null,
+            languageCode: widget.languageCode.toLowerCase(),
+            style: widget.pickerDialogStyle,
+            filteredCountries: filteredCountries,
+            searchText: widget.searchText,
+            countryList: _countryList,
+            selectedCountry: _selectedCountry,
+            onCountryChanged: (Country country) {
+              _selectedCountry = country;
+              widget.onCountryChanged?.call(country);
+              setState(() {});
+            },
+          ),
         ),
       ),
     );
@@ -382,7 +395,6 @@ class _IntlPhoneFieldState extends State<IntlPhoneField> {
   @override
   Widget build(BuildContext context) {
     return TextFormField(
-      key: widget.formFieldKey,
       initialValue: (widget.controller == null) ? number : null,
       autofillHints: widget.disableAutoFillHints ? null : [AutofillHints.telephoneNumberNational],
       readOnly: widget.readOnly,
@@ -398,8 +410,9 @@ class _IntlPhoneFieldState extends State<IntlPhoneField> {
       cursorWidth: widget.cursorWidth,
       showCursor: widget.showCursor,
       onFieldSubmitted: widget.onSubmitted,
-      magnifierConfiguration: widget.magnifierConfiguration,
       decoration: widget.decoration.copyWith(
+        isDense: widget.textFieldIsDense,
+        contentPadding: widget.textFieldPadding,
         prefixIcon: _buildFlagsButton(),
         counterText: !widget.enabled ? '' : null,
       ),
@@ -454,7 +467,7 @@ class _IntlPhoneFieldState extends State<IntlPhoneField> {
         decoration: widget.dropdownDecoration,
         child: InkWell(
           borderRadius: widget.dropdownDecoration.borderRadius as BorderRadius?,
-          onTap: widget.enabled ? _changeCountry : null,
+          onTapUp: (details) => widget.enabled ? _changeCountry(details) : null,
           child: Padding(
             padding: widget.flagsButtonPadding,
             child: Row(
@@ -473,14 +486,14 @@ class _IntlPhoneFieldState extends State<IntlPhoneField> {
                 if (widget.showCountryFlag) ...[
                   kIsWeb
                       ? Image.asset(
-                          'assets/flags/${_selectedCountry.code.toLowerCase()}.png',
-                          package: 'intl_phone_field',
-                          width: 32,
-                        )
+                    'assets/flags/${_selectedCountry.code.toLowerCase()}.png',
+                    package: 'intl_phone_field2',
+                    width: widget.flagWidth,
+                  )
                       : Text(
-                          _selectedCountry.flag,
-                          style: const TextStyle(fontSize: 18),
-                        ),
+                    _selectedCountry.flag,
+                    style: const TextStyle(fontSize: 18),
+                  ),
                   const SizedBox(width: 8),
                 ],
                 FittedBox(
